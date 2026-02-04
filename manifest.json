@@ -1,0 +1,16 @@
+{
+  "short_name": "لعبة ماريو",
+  "name": "Mario Guard Game",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/860/860604.png", 
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#87CEEB",
+  "background_color": "#ffffff"
+}
+
